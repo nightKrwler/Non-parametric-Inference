@@ -1,0 +1,112 @@
+---
+title: "NPI Project"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+```{r}
+library(lawstat)
+library(nortest)
+library(BSDA)
+data = read.csv("stroopdata.csv")
+diff=data['Congruent']-data['Incongruent']
+
+congruent= as.numeric(unlist(data['Congruent']))
+incongruent= as.numeric(unlist(data['Incongruent']))
+difference= as.numeric(unlist(diff))
+d<-data.frame("Congruent"= congruent,"Incongruent"=incongruent)
+```
+Test of Randomness - Runs Test
+```{r}
+alpha = 0.05
+## Compute critical value.
+crit_val =qnorm(1-alpha/2)
+#Critical region: Reject H0 if |Z| > 1.96 
+runs.test(d$Congruent,alternative="two.sided") # fail to reject --> randomly generated
+runs.test(d$Incongruent,alternative="two.sided") # fail to reject --> randomly generated
+cat('Critical Value :' ,crit_val)
+```
+Goodness of FIT - EDA
+```{r}
+summary(d)
+plot(d$Congruent,ylim=c(min(d$Congruent),max(d$Incongruent)),type="l", col="green",ylab="Data")
+lines(d$Incongruent,col="blue")
+legend("topright",legend = c("Congruent","Incongruent"),lty=1,lwd=2,pch=21,col=c("green","blue"),ncol=2,bty="n",cex=0.8,text.col =c("green","blue"),inset=0.01 )
+#Empirical Distribution Function
+plot.ecdf(d$Congruent,xlab="Congruent Data",pch="*")
+plot.ecdf(d$Incongruent,xlab = "Incongruent Data",col="blue")
+```
+
+```{r}
+#Q-Q PLOTS
+qqnorm(congruent,xlab="Congruent Data")
+qqline(congruent,xlab="Congruent Data")
+qqnorm(incongruent,xlab = "Incongruent Data")
+qqline(incongruent,xlab = "Incongruent Data")
+
+#Lilliefor's Test of Normality
+lillie.test(d$Congruent) # fail to reject --> normal distribution
+lillie.test(d$Incongruent) # fail to reject --> normality distribution
+
+```
+Measures of Association using Kendall Tau Coefficient and Spearman's Coefficient
+```{r}
+alpha = 0.05
+#---- Checking for association-----#
+cor.test(d$Congruent,d$Incongruent,method = "kendall")# reject null --> dependence exists
+cor.test(d$Congruent,d$Incongruent,method = "spearman")# reject null --> dependence exists
+
+print("Test to check Negative Association")
+cor.test(d$Congruent,d$Incongruent,method = "kendall",alternative="less")# failed to reject 
+cor.test(d$Congruent,d$Incongruent,method = "spearman",alternative="less")# failed to reject
+
+print("Test to check Positive Association")
+cor.test(d$Congruent,d$Incongruent,method = "kendall",alternative="greater") # reject null --> positive association exists
+cor.test(d$Congruent,d$Incongruent,method = "spearman",alternative="greater") # reject null --> positive association exists
+
+```
+
+Hypothesis Testing <br />
+
+Paired Sample Tests <br />
+
+a) Non-Parametric Tests
+$M_D$ --> Median Difference
+
+H0 : $M_D$ = 0 <br />
+Ha : $M_D$ < 0 <br />
+
+```{r}
+alpha = 0.05
+#SIGN Test
+SIGN.test(d$Congruent,d$Incongruent,alternative = "less") # reject null - less p value
+#Wilcoxon Signed Rank Test
+wilcox.test(d$Congruent,d$Incongruent,paired = TRUE,alternative = 'less') # reject null - less p value
+```
+b) Parametric Test<br />
+One-tailed paired t-test with  $\alpha$  level of  0.05  and dependent sample.
+$\mu_d$ --> Mean Difference
+
+H0 : $\mu_d$ = 0 <br />
+Ha : $\mu_d$ < 0 <br />
+```{r}
+t.test(d$Congruent, d$Incongruent, paired = TRUE, alternative ='less') # reject null - less p value
+```
+Power of the test
+```{r}
+#sign
+n = nrow(d)
+#under H1 parameters
+mean = mean(d$Congruent-d$Incongruent)
+std = sd(d$Congruent-d$Incongruent)
+theta = pnorm(0,mean=mean,sd=std)
+k_alpha = 7 # obtained from repeated checking 
+exact_size_sign = pbinom(k_alpha,n,prob=0.5)
+power_sign = pbinom(k_alpha,n,prob=1-theta)
+power_ttest = pnorm(-6.262868,mean=mean, sd=std/sqrt(n))
+
+cat("\n","Power of T Test : ", power_ttest,"\n","Exact size or significance level of T Test : ", alpha,"\n","Power of Sign Test : ", power_sign,"\n","Exact size or significance level of Sign Test : ", exact_size_sign,"\n","Although the sizes differ, sign test which has less size has more power. \n Thus Sign Test is more powerful then T Test")
+
+```
+
